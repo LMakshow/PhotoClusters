@@ -1,0 +1,112 @@
+import { useEffect, useMemo, useState } from "react"
+import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
+import { format } from "date-fns"
+
+import { Screen } from "@/components/Screen"
+import { Text } from "@/components/Text"
+import { MomentCluster } from "@/services/photoClustering"
+import { loadCachedMomentsState, refreshMomentsState } from "@/services/photoLibrary"
+import { useAppTheme } from "@/theme/context"
+
+export default function MomentsRoute() {
+  const { themed, theme } = useAppTheme()
+
+  const [clusters, setClusters] = useState<MomentCluster[]>(() => loadCachedMomentsState().moments)
+  const [assetUriById, setAssetUriById] = useState<Record<string, string>>(() => {
+    const { assetIndex } = loadCachedMomentsState()
+    const map: Record<string, string> = {}
+    for (const a of assetIndex) map[a.id] = a.uri
+    return map
+  })
+  const [status, setStatus] = useState<"idle" | "loading" | "denied" | "error">("idle")
+
+  useEffect(() => {
+    let cancelled = false
+
+    setStatus("loading")
+    refreshMomentsState({ includeScreenshots: false })
+      .then((s) => {
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        for (const a of s.assetIndex) map[a.id] = a.uri
+        setAssetUriById(map)
+        setClusters(s.moments)
+        setStatus("idle")
+      })
+      .catch(() => {
+        if (cancelled) return
+        setStatus("error")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const headerText = useMemo(() => {
+    switch (status) {
+      case "loading":
+        return "Indexing your library…"
+      case "error":
+        return "Could not load your library"
+      default:
+        return "Moments"
+    }
+  }, [status])
+
+  return (
+    <Screen preset="fixed" contentContainerStyle={themed($container)}>
+      <Text preset="heading" text={headerText} />
+
+      <FlatList
+        data={clusters}
+        keyExtractor={(c) => c.id}
+        contentContainerStyle={themed($listContent)}
+        renderItem={({ item }) => {
+          const coverUri = assetUriById[item.coverAssetId]
+          return (
+            <Pressable style={themed($row)}>
+              <View style={themed($thumb)}>
+                {coverUri ? (
+                  <Image source={{ uri: coverUri }} style={themed($thumbImage)} />
+                ) : (
+                  <View style={[themed($thumbImage), { backgroundColor: theme.colors.border }]} />
+                )}
+              </View>
+
+              <View style={themed($meta)}>
+                <Text preset="bold" text={`${format(new Date(item.startTs), "MMM d, yyyy")}`} />
+                <Text text={`${item.assetIds.length} photos`} />
+              </View>
+            </Pressable>
+          )
+        }}
+      />
+    </Screen>
+  )
+}
+
+const $container: ViewStyle = { flex: 1, paddingHorizontal: 16, paddingTop: 12 }
+
+const $listContent: ViewStyle = { paddingTop: 12, paddingBottom: 24 }
+
+const $row: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingVertical: 10,
+}
+
+const $thumb: ViewStyle = {
+  width: 56,
+  height: 56,
+  borderRadius: 12,
+  overflow: "hidden",
+  marginRight: 12,
+}
+
+const $thumbImage: ImageStyle = {
+  width: "100%",
+  height: "100%",
+}
+
+const $meta: ViewStyle = { flex: 1 }
