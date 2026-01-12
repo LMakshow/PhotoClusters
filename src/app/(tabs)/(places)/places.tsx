@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
-import { useRouter } from "expo-router"
+import { Stack, useRouter } from "expo-router"
 import { format, isSameDay } from "date-fns"
 
 import { Screen } from "@/components/Screen"
@@ -58,7 +58,7 @@ export default function PlacesRoute() {
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)}>
-      <Text preset="heading" text={headerText} />
+      <Stack.Screen options={{ title: headerText }} />
 
       <FlatList
         data={clusters}
@@ -70,7 +70,7 @@ export default function PlacesRoute() {
             <Pressable
               style={themed($row)}
               onPress={() => {
-                router.push(`/(tabs)/places/${encodeURIComponent(item.id)}`)
+                router.push(`/places/${encodeURIComponent(item.id)}`)
               }}
             >
               <View style={themed($thumb)}>
@@ -108,7 +108,7 @@ function formatPlaceTitle(cluster: PlaceCluster): string {
   return `${label} • ${baseDate}, ${format(start, "HH:mm")} – ${format(end, "MMM d, HH:mm")}`
 }
 
-const $container: ViewStyle = { flex: 1, paddingHorizontal: 16, paddingTop: 12 }
+const $container: ViewStyle = { flex: 1, paddingHorizontal: 16 }
 
 const $listContent: ViewStyle = { paddingTop: 12, paddingBottom: 24 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
-import { useRouter } from "expo-router"
+import { Stack, useRouter } from "expo-router"
 import { format, isSameDay } from "date-fns"
 
 import { Screen } from "@/components/Screen"
@@ -67,7 +67,7 @@ export default function MomentsRoute() {
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)}>
-      <Text preset="heading" text={headerText} />
+      <Stack.Screen options={{ title: headerText }} />
 
       <FlatList
         data={clusters}
@@ -79,7 +79,7 @@ export default function MomentsRoute() {
             <Pressable
               style={themed($row)}
               onPress={() => {
-                router.push(`/(tabs)/moments/${encodeURIComponent(item.id)}`)
+                router.navigate(`/(tabs)/(moments)/moments/${encodeURIComponent(item.id)}`)
               }}
             >
               <View style={themed($thumb)}>
@@ -129,7 +129,7 @@ function formatMomentTitle(
   return `${baseDate} • ${format(start, "HH:mm")}–${format(end, "MMM d, HH:mm")}`
 }
 
-const $container: ViewStyle = { flex: 1, paddingHorizontal: 16, paddingTop: 12 }
+const $container: ViewStyle = { flex: 1, paddingHorizontal: 16 }
 
 const $listContent: ViewStyle = { paddingTop: 12, paddingBottom: 24 }
 

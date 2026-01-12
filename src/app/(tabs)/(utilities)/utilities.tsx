@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
-import { useRouter } from "expo-router"
+import { Stack, useRouter } from "expo-router"
 
 import { Screen } from "@/components/Screen"
 import { Text } from "@/components/Text"
@@ -38,7 +38,7 @@ export default function UtilitiesRoute() {
     }
   }, [])
 
-  const title = useMemo(() => {
+  const headerText = useMemo(() => {
     if (status === "loading") return "Utilities (loading…)"
     if (status === "error") return "Utilities (error)"
     return "Utilities"
@@ -59,7 +59,8 @@ export default function UtilitiesRoute() {
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)}>
-      <Text preset="heading" text={title} />
+      <Stack.Screen options={{ title: headerText }} />
+
       <Text text={`Screenshots: ${assets.length}`} />
 
       <FlatList
@@ -77,7 +78,7 @@ export default function UtilitiesRoute() {
             <Pressable
               style={themed($cell)}
               onPress={() => {
-                router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
+                router.push(`/photo/${encodeURIComponent(item.id)}`)
               }}
             >
               <Image source={{ uri: item.uri }} style={themed($img)} />

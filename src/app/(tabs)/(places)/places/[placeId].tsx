@@ -100,7 +100,7 @@ export default function PlaceDetailRoute() {
               <Pressable
                 style={$cell}
                 onPress={() => {
-                  router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
+                  router.push(`/photo/${encodeURIComponent(item.id)}`)
                 }}
               >
                 <Image source={{ uri: item.uri }} style={$img} />
