@@ -37,17 +37,18 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="people"
-        options={{
-          title: "People",
-          tabBarIcon: ({ color, size }) => <Icon icon="people" color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
         name="places"
         options={{
           title: "Places",
           tabBarIcon: ({ color, size }) => <Icon icon="places" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen name="places/[placeId]" options={{ href: null, title: "Place" }} />
+      <Tabs.Screen
+        name="people"
+        options={{
+          title: "People",
+          tabBarIcon: ({ color, size }) => <Icon icon="people" color={color} size={size} />,
         }}
       />
     </Tabs>

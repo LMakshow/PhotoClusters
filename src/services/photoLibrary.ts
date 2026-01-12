@@ -3,17 +3,31 @@ import * as MediaLibrary from "expo-media-library"
 
 import { load, save } from "@/utils/storage"
 
-import { AssetIndexItem, ClusterOptions, MomentCluster, clusterMoments } from "./photoClustering"
+import {
+  AssetIndexItem,
+  ClusterOptions,
+  MomentCluster,
+  PlaceCluster,
+  clusterMoments,
+  clusterPlaces,
+} from "./photoClustering"
 
 const STORAGE_KEYS = {
   assetIndex: "photoClusters.assetIndex.v1",
   moments: "photoClusters.moments.v1",
+  places: "photoClusters.places.v1",
   lastSyncTs: "photoClusters.lastSyncTs.v1",
 }
 
 export type MomentsState = {
   assetIndex: AssetIndexItem[]
   moments: MomentCluster[]
+  lastSyncTs: number | null
+}
+
+export type PlacesState = {
+  assetIndex: AssetIndexItem[]
+  places: PlaceCluster[]
   lastSyncTs: number | null
 }
 
@@ -33,6 +47,15 @@ export function loadCachedMomentsState(): MomentsState {
     assetIndex: load<AssetIndexItem[]>(STORAGE_KEYS.assetIndex) ?? [],
     moments: load<MomentCluster[]>(STORAGE_KEYS.moments) ?? [],
     lastSyncTs: load<number>(STORAGE_KEYS.lastSyncTs),
+  }
+}
+
+export function loadCachedPlacesState(): PlacesState {
+  const { assetIndex, lastSyncTs } = loadCachedMomentsState()
+  return {
+    assetIndex,
+    places: load<PlaceCluster[]>(STORAGE_KEYS.places) ?? [],
+    lastSyncTs,
   }
 }
 
@@ -66,6 +89,44 @@ export async function refreshMomentsState(
   return {
     assetIndex: indexed,
     moments,
+    lastSyncTs,
+  }
+}
+
+export async function refreshPlacesState(options?: {
+  includeScreenshots?: boolean
+}): Promise<PlacesState> {
+  const permission = await requestPhotoPermission()
+  if (!permission.granted) {
+    return loadCachedPlacesState()
+  }
+
+  const cached = loadCachedMomentsState()
+  let assetIndex = cached.assetIndex
+
+  if (assetIndex.length === 0) {
+    const refreshed = await refreshMomentsState({ includeScreenshots: true })
+    assetIndex = refreshed.assetIndex
+  }
+
+  const enriched = await enrichAssetIndexWithLocation(assetIndex)
+  if (enriched.didChange) {
+    save(STORAGE_KEYS.assetIndex, enriched.assetIndex)
+  }
+
+  const places = clusterPlaces(enriched.assetIndex, {
+    radiusKm: 0.5,
+    maxTravelTimeMinutes: 60,
+    includeScreenshots: options?.includeScreenshots ?? false,
+  })
+
+  const lastSyncTs = Date.now()
+  save(STORAGE_KEYS.places, places)
+  save(STORAGE_KEYS.lastSyncTs, lastSyncTs)
+
+  return {
+    assetIndex: enriched.assetIndex,
+    places,
     lastSyncTs,
   }
 }
@@ -109,6 +170,54 @@ async function buildAssetIndex(): Promise<{
   }
 
   return { assetIndex: out, screenshotsSet }
+}
+
+async function enrichAssetIndexWithLocation(
+  assetIndex: AssetIndexItem[],
+): Promise<{ assetIndex: AssetIndexItem[]; didChange: boolean }> {
+  // Location is available only via AssetInfo, which requires per-asset calls.
+  // Keep this bounded so Places doesn't significantly slow down the app.
+  const MAX_LOOKUPS = 250
+
+  let didChange = false
+  let lookups = 0
+
+  // Prefer newest assets first.
+  const updated = [...assetIndex].sort((a, b) => b.ts - a.ts)
+
+  for (let i = 0; i < updated.length; i++) {
+    if (lookups >= MAX_LOOKUPS) break
+
+    const item = updated[i]
+    if (typeof item.lat === "number" && typeof item.lon === "number") continue
+
+    try {
+      const info = await MediaLibrary.getAssetInfoAsync(item.id, {
+        shouldDownloadFromNetwork: false,
+      })
+      lookups++
+
+      if (lookups < 10) console.log(info)
+
+      const loc = info.location
+      if (
+        loc &&
+        typeof Number(loc.latitude) === "number" &&
+        typeof Number(loc.longitude) === "number"
+      ) {
+        item.lat = Number(loc.latitude)
+        item.lon = Number(loc.longitude)
+        didChange = true
+      }
+    } catch {
+      lookups++
+    }
+  }
+
+  // Restore original ordering (ascending by time).
+  updated.sort((a, b) => a.ts - b.ts)
+
+  return { assetIndex: updated, didChange }
 }
 
 async function findScreenshotAssetIds(): Promise<Set<string>> {
