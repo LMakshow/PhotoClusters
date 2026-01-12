@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { FlatList, Image, ImageStyle, Pressable, ViewStyle } from "react-native"
+import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
 import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 import { format, isSameDay } from "date-fns"
 
@@ -34,6 +34,19 @@ export default function MomentDetailRoute() {
     if (!cluster) return "Moment"
     return formatMomentHeaderTitle(cluster)
   }, [cluster])
+
+  const gridData = useMemo(() => {
+    const numColumns = 3
+    const remainder = assets.length % numColumns
+    if (remainder === 0) return assets as MomentGridItem[]
+
+    const padded = [...assets] as MomentGridItem[]
+    const toAdd = numColumns - remainder
+    for (let i = 0; i < toAdd; i++) {
+      padded.push({ id: `__empty__-${assets.length + i}`, __empty: true })
+    }
+    return padded
+  }, [assets])
 
   if (!cluster) {
     return (
@@ -73,21 +86,27 @@ export default function MomentDetailRoute() {
         <Text text={`${assets.length} photos`} />
 
         <FlatList
-          data={assets}
+          data={gridData}
           keyExtractor={(a) => a.id}
           numColumns={3}
           contentContainerStyle={$grid}
           columnWrapperStyle={$row}
-          renderItem={({ item }) => (
-            <Pressable
-              style={$cell}
-              onPress={() => {
-                router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
-              }}
-            >
-              <Image source={{ uri: item.uri }} style={$img} />
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            if ("__empty" in item) {
+              return <View style={[$cell, $invisible]} />
+            }
+
+            return (
+              <Pressable
+                style={$cell}
+                onPress={() => {
+                  router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
+                }}
+              >
+                <Image source={{ uri: item.uri }} style={$img} />
+              </Pressable>
+            )
+          }}
         />
       </Screen>
     </>
@@ -129,6 +148,10 @@ const $cell: ViewStyle = {
 }
 
 const $img: ImageStyle = { width: "100%", height: "100%" }
+
+const $invisible: ViewStyle = { opacity: 0 }
+
+type MomentGridItem = AssetIndexItem | { id: string; __empty: true }
 
 const $backButton: ViewStyle = {
   paddingHorizontal: 12,

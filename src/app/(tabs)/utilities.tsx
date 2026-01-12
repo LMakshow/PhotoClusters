@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { FlatList, Image, ImageStyle, Pressable, ViewStyle } from "react-native"
+import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
 import { useRouter } from "expo-router"
 
 import { Screen } from "@/components/Screen"
@@ -44,27 +44,46 @@ export default function UtilitiesRoute() {
     return "Utilities"
   }, [status])
 
+  const gridData = useMemo(() => {
+    const numColumns = 3
+    const remainder = assets.length % numColumns
+    if (remainder === 0) return assets as UtilitiesGridItem[]
+
+    const padded = [...assets] as UtilitiesGridItem[]
+    const toAdd = numColumns - remainder
+    for (let i = 0; i < toAdd; i++) {
+      padded.push({ id: `__empty__-${assets.length + i}`, __empty: true })
+    }
+    return padded
+  }, [assets])
+
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)}>
       <Text preset="heading" text={title} />
       <Text text={`Screenshots: ${assets.length}`} />
 
       <FlatList
-        data={assets}
+        data={gridData}
         keyExtractor={(a) => a.id}
         numColumns={3}
         contentContainerStyle={themed($grid)}
         columnWrapperStyle={themed($row)}
-        renderItem={({ item }) => (
-          <Pressable
-            style={themed($cell)}
-            onPress={() => {
-              router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
-            }}
-          >
-            <Image source={{ uri: item.uri }} style={themed($img)} />
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          if ("__empty" in item) {
+            return <View style={themed([$cell, $invisible])} />
+          }
+
+          return (
+            <Pressable
+              style={themed($cell)}
+              onPress={() => {
+                router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
+              }}
+            >
+              <Image source={{ uri: item.uri }} style={themed($img)} />
+            </Pressable>
+          )
+        }}
       />
 
       {assets.length === 0 ? (
@@ -92,3 +111,7 @@ const $cell: ViewStyle = {
 }
 
 const $img: ImageStyle = { width: "100%", height: "100%" }
+
+const $invisible: ViewStyle = { opacity: 0 }
+
+type UtilitiesGridItem = AssetIndexItem | { id: string; __empty: true }
