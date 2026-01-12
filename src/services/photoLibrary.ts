@@ -1,5 +1,6 @@
 import { Platform } from "react-native"
 import * as MediaLibrary from "expo-media-library"
+import { getNearestCity } from "offline-geocode-city"
 
 import { load, save } from "@/utils/storage"
 
@@ -116,17 +117,29 @@ export async function refreshPlacesState(options?: {
 
   const places = clusterPlaces(enriched.assetIndex, {
     radiusKm: 0.5,
-    maxTravelTimeMinutes: 60,
     includeScreenshots: options?.includeScreenshots ?? false,
   })
 
+  const placesWithNames: PlaceCluster[] = places.map((p) => {
+    try {
+      const nearest = getNearestCity(p.lat, p.lon)
+      const city = nearest?.cityName
+      const country = nearest?.countryName
+
+      const name = city && country ? `${city}, ${country}` : city || country
+      return name ? { ...p, name } : p
+    } catch {
+      return p
+    }
+  })
+
   const lastSyncTs = Date.now()
-  save(STORAGE_KEYS.places, places)
+  save(STORAGE_KEYS.places, placesWithNames)
   save(STORAGE_KEYS.lastSyncTs, lastSyncTs)
 
   return {
     assetIndex: enriched.assetIndex,
-    places,
+    places: placesWithNames,
     lastSyncTs,
   }
 }
@@ -196,8 +209,6 @@ async function enrichAssetIndexWithLocation(
         shouldDownloadFromNetwork: false,
       })
       lookups++
-
-      if (lookups < 10) console.log(info)
 
       const loc = info.location
       if (

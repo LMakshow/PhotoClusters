@@ -99,13 +99,13 @@ function formatPlaceTitle(cluster: PlaceCluster): string {
 
   const baseDate = format(start, "MMM d, yyyy")
 
-  const coords = `${cluster.lat.toFixed(3)}, ${cluster.lon.toFixed(3)}`
+  const label = cluster.name || `${cluster.lat.toFixed(3)}, ${cluster.lon.toFixed(3)}`
 
   if (isSameDay(start, end)) {
-    return `${baseDate} • ${format(start, "HH:mm")}–${format(end, "HH:mm")} • ${coords}`
+    return `${label} • ${baseDate}, ${format(start, "HH:mm")}–${format(end, "HH:mm")}`
   }
 
-  return `${baseDate} • ${format(start, "HH:mm")}–${format(end, "MMM d, HH:mm")} • ${coords}`
+  return `${label} • ${baseDate}, ${format(start, "HH:mm")} – ${format(end, "MMM d, HH:mm")}`
 }
 
 const $container: ViewStyle = { flex: 1, paddingHorizontal: 16, paddingTop: 12 }

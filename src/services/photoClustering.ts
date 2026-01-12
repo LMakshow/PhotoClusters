@@ -25,6 +25,7 @@ export type PlaceCluster = {
   assetIds: string[]
   lat: number
   lon: number
+  name?: string
 }
 
 export type ClusterOptions = {
@@ -34,7 +35,6 @@ export type ClusterOptions = {
 
 export type PlaceClusterOptions = {
   radiusKm: number
-  maxTravelTimeMinutes: number
   includeScreenshots: boolean
 }
 
@@ -75,7 +75,7 @@ export function clusterPlaces(
   assets: AssetIndexItem[],
   options: PlaceClusterOptions,
 ): PlaceCluster[] {
-  const { radiusKm, maxTravelTimeMinutes, includeScreenshots } = options
+  const { radiusKm, includeScreenshots } = options
 
   const filtered = (includeScreenshots ? assets : assets.filter((a) => !a.isScreenshot)).filter(
     (a) => typeof a.lat === "number" && typeof a.lon === "number",
@@ -84,24 +84,19 @@ export function clusterPlaces(
   const sorted = [...filtered].sort((a, b) => a.ts - b.ts)
   if (sorted.length === 0) return []
 
-  const maxTravelMs = maxTravelTimeMinutes * 60 * 1000
-
   const clusters: PlaceCluster[] = []
 
   let current: AssetIndexItem[] = [sorted[0]]
   let centroid = { lat: sorted[0].lat as number, lon: sorted[0].lon as number }
 
   for (let i = 1; i < sorted.length; i++) {
-    const prev = sorted[i - 1]
     const next = sorted[i]
 
     const nextLat = next.lat as number
     const nextLon = next.lon as number
-
-    const travelMs = next.ts - prev.ts
     const distKm = haversineKm(centroid.lat, centroid.lon, nextLat, nextLon)
 
-    if (travelMs > maxTravelMs || distKm > radiusKm) {
+    if (distKm > radiusKm) {
       clusters.push(toPlaceCluster(current, centroid))
       current = [next]
       centroid = { lat: nextLat, lon: nextLon }
