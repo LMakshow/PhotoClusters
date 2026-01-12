@@ -11,7 +11,9 @@
   },
   "newArchEnabled": true,
   "jsEngine": "hermes",
-  "assetBundlePatterns": ["**/*"],
+  "assetBundlePatterns": [
+    "**/*"
+  ],
   "android": {
     "icon": "./assets/images/app-icon-android-legacy.png",
     "package": "com.photoclusters",
@@ -21,7 +23,8 @@
   "ios": {
     "icon": "./assets/images/app-icon-ios.png",
     "supportsTablet": true,
-    "bundleIdentifier": "com.photoclusters"
+    "bundleIdentifier": "com.photoclusters",
+    "appleTeamId": "V85GP2G4ND"
   },
   "web": {
     "favicon": "./assets/images/app-icon-web-favicon.png",
@@ -33,10 +36,10 @@
     [
       "expo-splash-screen",
       {
-        "image": "./assets/images/app-icon-android-adaptive-foreground.png",
-        "imageWidth": 300,
-        "resizeMode": "contain",
-        "backgroundColor": "#191015"
+        "image": "./assets/images/logo.png",
+        "imageWidth": 200,
+        "resizeMode": "cover",
+        "backgroundColor": "#262626"
       }
     ],
     [
