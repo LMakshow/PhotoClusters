@@ -1,77 +1,411 @@
-# Welcome to your new ignited app!
+# PhotoClusters — Implementation Notes
 
-> The latest and greatest boilerplate for Infinite Red opinions
+This file is meant to preserve enough context about the current state of the app so that a future contributor can quickly understand:
 
-This is the boilerplate that [Infinite Red](https://infinite.red) uses as a way to test bleeding-edge changes to our React Native stack.
+- what the app does
+- how it is structured
+- what the current clustering logic is
+- where to extend it next
 
-- [Quick start documentation](https://github.com/infinitered/ignite/blob/master/docs/boilerplate/Boilerplate.md)
-- [Full documentation](https://github.com/infinitered/ignite/blob/master/docs/README.md)
+## High-level product goal
 
-## Getting Started
+PhotoClusters is a React Native (Expo) app that clusters a user’s local photo library into “Moments” (sessions) that feel like logical groupings.
 
-```bash
-yarn install
-yarn start
-```
+Current MVP features:
 
-To make things work on your local simulator, or on your phone, you need first to [run `eas build`](https://github.com/infinitered/ignite/blob/master/docs/expo/EAS.md). We have many shortcuts on `package.json` to make it easier:
+- **Moments tab**: time-gap based session clustering (screenshots excluded by default).
+- **Utilities tab**: screenshot collection.
+- **Places tab**: location-based clustering (no network calls; uses offline reverse geocoding).
+- **People tab**: placeholder (“Coming soon”).
 
-```bash
-yarn build:ios:sim # build for ios simulator
-yarn build:ios:device # build for ios device
-yarn build:ios:prod # build for ios device
-```
+Primary hypothesis: quality of clustering is the key value; the grouping should feel intuitive.
 
-### `./assets`
+---
 
-This directory is designed to organize and store various assets, making it easy for you to manage and use them in your application. The assets are further categorized into subdirectories, including `icons` and `images`:
+## Running / testing
 
-```tree
-assets
-├── icons
-└── images
-```
+### Typecheck
 
-**icons**
-This is where your icon assets will live. These icons can be used for buttons, navigation elements, or any other UI components. The recommended format for icons is PNG, but other formats can be used as well.
+- `yarn compile`
 
-Ignite comes with a built-in `Icon` component. You can find detailed usage instructions in the [docs](https://github.com/infinitered/ignite/blob/master/docs/boilerplate/app/components/Icon.md).
+### iOS device
 
-**images**
-This is where your images will live, such as background images, logos, or any other graphics. You can use various formats such as PNG, JPEG, or GIF for your images.
+This repo uses a dev-client workflow (`yarn start` runs `expo start --dev-client`).
 
-Another valuable built-in component within Ignite is the `AutoImage` component. You can find detailed usage instructions in the [docs](https://github.com/infinitered/ignite/blob/master/docs/Components-AutoImage.md).
+Typical flow:
 
-How to use your `icon` or `image` assets:
+1. Build and install dev-client:
+   - `yarn ios --device` (USB-connected iPhone)
+2. Start Metro:
+   - `yarn start`
 
-```typescript
-import { Image } from 'react-native';
+If the app installs but won’t launch due to trust/signing:
 
-const MyComponent = () => {
-  return (
-    <Image source={require('assets/images/my_image.png')} />
-  );
-};
-```
+- Enable iOS **Developer Mode** (Settings → Privacy & Security)
+- Trust the developer certificate (Settings → General → VPN & Device Management)
 
-## Running Maestro end-to-end tests
+---
 
-Follow our [Maestro Setup](https://ignitecookbook.com/docs/recipes/MaestroSetup) recipe.
+## Tech stack
 
-## Next Steps
+- **Expo SDK**: ~54
+- **Navigation**: `expo-router`
+- **Storage**: `react-native-mmkv` via `src/utils/storage`
+- **Media access**: `expo-media-library`
+- **Dates**: `date-fns`
 
-### Ignite Cookbook
+Entry point:
 
-[Ignite Cookbook](https://ignitecookbook.com/) is an easy way for developers to browse and share code snippets (or “recipes”) that actually work.
+- `package.json` sets `"main": "expo-router/entry"`
 
-### Upgrade Ignite boilerplate
+---
 
-Read our [Upgrade Guide](https://ignitecookbook.com/docs/recipes/UpdatingIgnite) to learn how to upgrade your Ignite project.
+## App navigation / routes
 
-## Community
+The app uses `expo-router`.
 
-⭐️ Help us out by [starring on GitHub](https://github.com/infinitered/ignite), filing bug reports in [issues](https://github.com/infinitered/ignite/issues) or [ask questions](https://github.com/infinitered/ignite/discussions).
+- Root layout: `src/app/_layout.tsx`
+  - Boots fonts + i18n
+  - Wraps the app in `ThemeProvider`, `SafeAreaProvider`, `KeyboardProvider`
+  - Renders `<Slot />`
 
-💬 Join us on [Slack](https://join.slack.com/t/infiniteredcommunity/shared_invite/zt-1f137np4h-zPTq_CbaRFUOR_glUFs2UA) to discuss.
+- Root route: `src/app/index.tsx`
+  - Redirects to `/(tabs)/(moments)/moments`
 
-📰 Make our Editor-in-chief happy by [reading the React Native Newsletter](https://reactnativenewsletter.com/).
+- Tabs route group: `src/app/(tabs)/_layout.tsx`
+  - Bottom tabs:
+    - `src/app/(tabs)/(moments)/moments.tsx`
+    - `src/app/(tabs)/(moments)/moments/[clusterId].tsx`
+    - `src/app/(tabs)/(utilities)/utilities.tsx`
+    - `src/app/(tabs)/(places)/places.tsx`
+    - `src/app/(tabs)/(places)/places/[placeId].tsx`
+    - `src/app/(tabs)/(people)/people.tsx`
+
+Shared routes used across multiple tabs:
+
+- `src/app/(tabs)/(moments,places,utilities,people)/photo/[assetId].tsx`
+  - This is a shared route that is accessible from multiple tabs.
+  - URL is `/photo/[assetId]`.
+  - This screen is presented inside a Stack (separate from the tab screens).
+
+Tab bar icons:
+
+- Tab icons are configured in `src/app/(tabs)/_layout.tsx` using the app's `Icon` component.
+- Icon assets are registered in `src/components/Icon.tsx` (`moments`, `utilities`, `people`, `places`).
+
+---
+
+## Core data model
+
+Defined in `src/services/photoClustering.ts`.
+
+### `AssetIndexItem`
+
+A compact representation of a photo asset:
+
+- `id: string`
+- `ts: number` — timestamp used for sorting/clustering
+- `uri: string`
+- `w: number`
+- `h: number`
+- `isScreenshot?: boolean`
+- `lat?: number` — optional latitude (enriched via `MediaLibrary.getAssetInfoAsync`)
+- `lon?: number` — optional longitude (enriched via `MediaLibrary.getAssetInfoAsync`)
+
+Note: at the moment `ts` is taken from `MediaLibrary.Asset.creationTime` (see below).
+
+### `MomentCluster`
+
+- `id: string` — currently derived from start/end/count: `${startTs}-${endTs}-${assetIds.length}`
+- `startTs: number`
+- `endTs: number`
+- `coverAssetId: string` — currently middle photo of the cluster
+- `assetIds: string[]`
+
+### `PlaceCluster`
+
+- `id: string` — currently derived from start/end/count: `${startTs}-${endTs}-${assetIds.length}`
+- `startTs: number`
+- `endTs: number`
+- `coverAssetId: string` — currently middle photo of the cluster
+- `assetIds: string[]`
+- `lat: number` — cluster centroid latitude
+- `lon: number` — cluster centroid longitude
+- `name?: string` — human-readable place label (derived offline)
+
+---
+
+## Media library indexing + caching
+
+Implemented in `src/services/photoLibrary.ts`.
+
+### Permission
+
+- `requestPhotoPermission()` uses:
+  - `MediaLibrary.getPermissionsAsync()`
+  - `MediaLibrary.requestPermissionsAsync()`
+
+### Cache keys (MMKV)
+
+Stored as JSON via `src/utils/storage` helpers:
+
+- `photoClusters.assetIndex.v1`
+- `photoClusters.moments.v1`
+- `photoClusters.places.v1`
+- `photoClusters.lastSyncTs.v1`
+
+### Public API
+
+- `loadCachedMomentsState()`
+  - returns cached `{ assetIndex, moments, lastSyncTs }`.
+
+- `refreshMomentsState(options?: Partial<ClusterOptions>)`
+  - requests permission
+  - fetches assets from MediaLibrary (paged)
+  - computes screenshot set (iOS `mediaSubtypes: ["screenshot"]` query + fallbacks)
+  - builds `indexed: AssetIndexItem[]`
+  - calls `clusterMoments(indexed, clusterOptions)`
+  - persists `assetIndex`, `moments`, `lastSyncTs`
+
+- `loadCachedPlacesState()`
+  - returns cached `{ assetIndex, places, lastSyncTs }`.
+
+- `refreshPlacesState(options?: { includeScreenshots?: boolean })`
+  - requests permission
+  - loads cached `assetIndex` (refreshes moments first if empty)
+  - enriches the asset index with GPS location (bounded per-asset lookups via `MediaLibrary.getAssetInfoAsync`)
+  - calls `clusterPlaces(enriched.assetIndex, { radiusKm, includeScreenshots })`
+  - derives `PlaceCluster.name` locally using `offline-geocode-city` (`getNearestCity(lat, lon)`)
+  - persists `places`, `lastSyncTs` (and persists updated `assetIndex` if GPS enrichment changed it)
+
+### Paged fetching (MVP constraints)
+
+`buildAssetIndex()`:
+
+- uses `MediaLibrary.getAssetsAsync({ mediaType: "photo", first: 200, after, sortBy: [creationTime] })`
+- currently stops at **2000 assets** for speed during development.
+
+Screenshot fetching:
+
+- `findScreenshotAssetIds()`:
+  - on iOS, first tries querying assets directly using:
+    - `MediaLibrary.getAssetsAsync({ mediaSubtypes: ["screenshot"], mediaType: "photo", ... })`
+  - if that yields nothing, falls back to smart albums:
+    - `MediaLibrary.getAlbumsAsync({ includeSmartAlbums: true })`
+    - tries to find an album whose title includes `"screenshot"` (case-insensitive)
+    - pages through that album to collect asset IDs
+  - currently caps at **2000 screenshot IDs**
+
+Additional screenshot heuristic:
+
+- filename contains `"screenshot"` (case-insensitive)
+
+During indexing (`buildAssetIndex()`), assets are also marked `isScreenshot` if their iOS `mediaSubtypes` includes `"screenshot"`.
+
+---
+
+## Clustering algorithm (Moments)
+
+Implemented in `src/services/photoClustering.ts`.
+
+### Inputs
+
+- `assets: AssetIndexItem[]`
+- `options: { sessionGapMinutes: number; includeScreenshots: boolean }`
+
+### Steps
+
+1. Filter screenshots out unless `includeScreenshots` is true.
+2. Sort ascending by `ts`.
+3. Start a new cluster if gap between consecutive photos exceeds:
+   - `gapMs = sessionGapMinutes * 60 * 1000`
+4. Convert each cluster into `MomentCluster`:
+   - `startTs` = first asset ts
+   - `endTs` = last asset ts
+   - `coverAssetId` = middle asset’s id
+
+Default gap used by the UI via `refreshMomentsState()`:
+
+- `sessionGapMinutes = 60`
+
+---
+
+## Clustering algorithm (Places)
+
+Implemented in `src/services/photoClustering.ts`.
+
+### Inputs
+
+- `assets: AssetIndexItem[]` (only assets that have `lat` and `lon` participate)
+- `options: { radiusKm: number; includeScreenshots: boolean }`
+
+### Steps
+
+1. Filter screenshots out unless `includeScreenshots` is true.
+2. Filter to assets with valid GPS coordinates.
+3. Sort ascending by `ts`.
+4. Maintain a running cluster centroid.
+5. Start a new cluster only when the next asset is further than `radiusKm` from the current centroid.
+6. Convert each cluster into a `PlaceCluster`:
+   - `startTs` / `endTs` from the first/last asset timestamps
+   - `coverAssetId` = middle asset’s id
+   - `lat` / `lon` = centroid
+
+Notes:
+
+- Places clustering is intentionally location-only; timestamps do not affect cluster boundaries.
+
+---
+
+## Moments UI
+
+Implemented in `src/app/(tabs)/(moments)/moments.tsx`.
+
+### Data flow
+
+- On initial render:
+  - loads cached state (`loadCachedMomentsState()`)
+- On mount:
+  - calls `refreshMomentsState({ includeScreenshots: false })`
+  - updates:
+    - `clusters`
+    - `assetUriById` map for rendering cover thumbnails
+
+### List item rendering
+
+- shows cover thumbnail from `assetUriById[coverAssetId]`
+- shows title + photo count
+- tap navigates to the Moment detail route: `/(tabs)/(moments)/moments/[clusterId]`
+
+### Moment detail screen
+
+Implemented in `src/app/(tabs)/(moments)/moments/[clusterId].tsx`.
+
+- Displays a 3-column grid of the cluster's assets.
+- Tapping an asset navigates to `/photo/[assetId]`.
+- The header title uses the cluster date/time formatting rules.
+- The back button uses `PressableIcon` and includes horizontal padding.
+- The grid pads the last row with invisible placeholder items so when the last row has 2 items they appear left + center (empty on the right).
+
+### Title formatting rules (current UX)
+
+The title includes time only when it helps disambiguate.
+
+Per-day cluster counting:
+
+- Compute `clusterCountByDayKey` using the cluster `startTs` day (`yyyy-MM-dd`).
+
+Formatting:
+
+- If a day has **only 1** cluster:
+  - show only date: `MMM d, yyyy`
+- If a day has **2+** clusters:
+  - show date + time info:
+    - If duration `endTs - startTs <= 10 min`:
+      - `MMM d, yyyy • HH:mm`
+    - Else if start/end are same day:
+      - `MMM d, yyyy • HH:mm–HH:mm`
+    - Else (cross midnight):
+      - `MMM d, yyyy • HH:mm–MMM d, HH:mm`
+
+---
+
+## Utilities UI
+
+Implemented in `src/app/(tabs)/(utilities)/utilities.tsx`.
+
+- On initial render:
+  - uses cached `assetIndex` to display screenshots
+- On mount:
+  - calls `refreshMomentsState({ includeScreenshots: true })`
+  - filters to assets where `isScreenshot === true`
+- Renders a 3-column grid of screenshots.
+- The grid pads the last row with invisible placeholder items so when the last row has 2 items they appear left + center (empty on the right).
+- Tapping an asset navigates to `/photo/[assetId]`.
+
+---
+
+## Photo viewer (single asset)
+
+Implemented in `src/app/(tabs)/(moments,places,utilities,people)/photo/[assetId].tsx`.
+
+- Full-screen viewer with a black background and `resizeMode="contain"`.
+- Loads the asset by `assetId` from the cached MMKV state (`loadCachedMomentsState()`).
+- Handles missing assets gracefully (e.g. cache refreshed/cleared).
+- Uses a transparent header with a white title and white back button.
+
+System bars:
+
+- `Screen` supports `systemBarStyle` and passes it through to `react-native-edge-to-edge` `SystemBars`.
+- The photo viewer sets `systemBarStyle` to light when focused (and dark otherwise) to keep status bar content readable.
+
+---
+
+## Places UI
+
+Implemented in:
+
+- `src/app/(tabs)/(places)/places.tsx` (list)
+- `src/app/(tabs)/(places)/places/[placeId].tsx` (detail grid)
+
+### Data flow
+
+- On initial render:
+  - loads cached state (`loadCachedPlacesState()`)
+- On mount:
+  - calls `refreshPlacesState({ includeScreenshots: false })`
+  - updates:
+    - `clusters`
+    - `assetUriById` map for rendering cover thumbnails
+
+### List item rendering
+
+- shows cover thumbnail from `assetUriById[coverAssetId]`
+- shows title + photo count
+- title format is location-first (derived `PlaceCluster.name`, with coordinates as fallback)
+- tap navigates to the place detail route: `/places/[placeId]`
+
+### Place detail screen
+
+- Displays a 3-column grid of the cluster's assets.
+- Tapping an asset navigates to `/photo/[assetId]`.
+- Header title includes the location label first, then date/time range.
+- The grid pads the last row with invisible placeholder items so when the last row has 2 items they appear left + center (empty on the right).
+
+---
+
+## People tab
+
+- `src/app/(tabs)/people.tsx` — placeholder
+
+---
+
+## Configuration notes
+
+- `expo-media-library` added as a dependency.
+- `app.json` contains an `expo-media-library` plugin config providing permission strings.
+
+---
+
+## Known limitations / TODOs
+
+- `photoLibrary.ts` currently caps indexing to 2000 assets.
+- Photo viewer routing is implemented within the tab navigator; back behavior depends on the navigation stack state.
+- No background refresh scheduling yet (currently refreshes on screen mount).
+- No near-duplicate/burst stacking yet.
+- Screenshot detection is best-effort; iOS primarily uses `mediaSubtypes: ["screenshot"]` with smart-album and filename fallbacks.
+- Places location enrichment uses per-asset `getAssetInfoAsync` calls and is bounded for performance.
+
+---
+
+## Where to extend next (suggested)
+
+- Improve photo viewer navigation UX (e.g. modal presentation, swipe-to-dismiss, deterministic return-to behavior).
+- Implement the **People** tab (face clustering / person profiles).
+
+Follow-ups:
+
+- Add manual split/merge (high UX value).
+- Add **search + filters** (date range, location, screenshots on/off, favorites).
+- Add **map-based Places** exploration (map preview, radius controls).
+- Improve **performance** for large libraries (thumbnail caching, pagination, background explainable refresh).
