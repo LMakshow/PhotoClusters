@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
+import { useRouter } from "expo-router"
 import { format, isSameDay } from "date-fns"
 
 import { Screen } from "@/components/Screen"
@@ -10,6 +11,7 @@ import { useAppTheme } from "@/theme/context"
 
 export default function MomentsRoute() {
   const { themed, theme } = useAppTheme()
+  const router = useRouter()
 
   const [clusters, setClusters] = useState<MomentCluster[]>(() => loadCachedMomentsState().moments)
   const [assetUriById, setAssetUriById] = useState<Record<string, string>>(() => {
@@ -74,7 +76,12 @@ export default function MomentsRoute() {
         renderItem={({ item }) => {
           const coverUri = assetUriById[item.coverAssetId]
           return (
-            <Pressable style={themed($row)}>
+            <Pressable
+              style={themed($row)}
+              onPress={() => {
+                router.push(`/(tabs)/moments/${encodeURIComponent(item.id)}`)
+              }}
+            >
               <View style={themed($thumb)}>
                 {coverUri ? (
                   <Image source={{ uri: coverUri }} style={themed($thumbImage)} />
