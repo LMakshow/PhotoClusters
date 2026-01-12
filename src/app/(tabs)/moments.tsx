@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { FlatList, Image, ImageStyle, Pressable, View, ViewStyle } from "react-native"
-import { format } from "date-fns"
+import { format, isSameDay } from "date-fns"
 
 import { Screen } from "@/components/Screen"
 import { Text } from "@/components/Text"
@@ -54,6 +54,15 @@ export default function MomentsRoute() {
     }
   }, [status])
 
+  const clusterCountByDayKey = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const c of clusters) {
+      const dayKey = format(new Date(c.startTs), "yyyy-MM-dd")
+      counts[dayKey] = (counts[dayKey] ?? 0) + 1
+    }
+    return counts
+  }, [clusters])
+
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)}>
       <Text preset="heading" text={headerText} />
@@ -75,7 +84,7 @@ export default function MomentsRoute() {
               </View>
 
               <View style={themed($meta)}>
-                <Text preset="bold" text={`${format(new Date(item.startTs), "MMM d, yyyy")}`} />
+                <Text preset="bold" text={formatMomentTitle(item, clusterCountByDayKey)} />
                 <Text text={`${item.assetIds.length} photos`} />
               </View>
             </Pressable>
@@ -84,6 +93,33 @@ export default function MomentsRoute() {
       />
     </Screen>
   )
+}
+
+function formatMomentTitle(
+  cluster: MomentCluster,
+  clusterCountByDayKey: Record<string, number>,
+): string {
+  const start = new Date(cluster.startTs)
+  const end = new Date(cluster.endTs)
+
+  const dayKey = format(start, "yyyy-MM-dd")
+  const shouldShowTime = (clusterCountByDayKey[dayKey] ?? 0) >= 2
+  const baseDate = format(start, "MMM d, yyyy")
+
+  if (!shouldShowTime) return baseDate
+
+  const durationMs = Math.max(0, end.getTime() - start.getTime())
+  const shortDuration = durationMs <= 10 * 60 * 1000
+
+  if (shortDuration) {
+    return `${baseDate} • ${format(start, "HH:mm")}`
+  }
+
+  if (isSameDay(start, end)) {
+    return `${baseDate} • ${format(start, "HH:mm")}–${format(end, "HH:mm")}`
+  }
+
+  return `${baseDate} • ${format(start, "HH:mm")}–${format(end, "MMM d, HH:mm")}`
 }
 
 const $container: ViewStyle = { flex: 1, paddingHorizontal: 16, paddingTop: 12 }

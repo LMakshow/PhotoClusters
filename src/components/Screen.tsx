@@ -241,7 +241,6 @@ function ScreenWithScrolling(props: ScreenProps) {
 export function Screen(props: ScreenProps) {
   const {
     theme: { colors },
-    themeContext,
   } = useAppTheme()
   const {
     backgroundColor,
@@ -249,7 +248,6 @@ export function Screen(props: ScreenProps) {
     keyboardOffset = 0,
     safeAreaEdges,
     SystemBarsProps,
-    systemBarStyle,
   } = props
 
   const $containerInsets = useSafeAreaInsetsStyle(safeAreaEdges)
@@ -262,10 +260,7 @@ export function Screen(props: ScreenProps) {
         $containerInsets,
       ]}
     >
-      <SystemBars
-        style={systemBarStyle || (themeContext === "dark" ? "light" : "dark")}
-        {...SystemBarsProps}
-      />
+      <SystemBars style={"dark"} {...SystemBarsProps} />
 
       <KeyboardAvoidingView
         behavior={isIos ? "padding" : "height"}

@@ -1,3 +1,4 @@
+import { Platform } from "react-native"
 import * as MediaLibrary from "expo-media-library"
 
 import { load, save } from "@/utils/storage"
@@ -91,18 +92,20 @@ async function buildAssetIndex(): Promise<{
     for (const a of page.assets) {
       out.push({
         id: a.id,
-        ts: (a.creationTime ?? 0) * 1000,
+        ts: a.creationTime ?? 0,
         uri: a.uri,
         w: a.width ?? 0,
         h: a.height ?? 0,
-        isScreenshot: a.filename?.toLowerCase().includes("screenshot") ?? false,
+        isScreenshot:
+          (a.mediaSubtypes?.includes("screenshot") ?? false) ||
+          (a.filename?.toLowerCase().includes("screenshot") ?? false),
       })
     }
 
     hasNextPage = page.hasNextPage
     after = page.endCursor ?? undefined
 
-    if (out.length >= 10000) break
+    if (out.length >= 2000) break
   }
 
   return { assetIndex: out, screenshotsSet }
@@ -110,8 +113,36 @@ async function buildAssetIndex(): Promise<{
 
 async function findScreenshotAssetIds(): Promise<Set<string>> {
   try {
-    const albums = await MediaLibrary.getAlbumsAsync()
-    const screenshotsAlbum = albums.find((a) => a.title.toLowerCase() === "screenshots")
+    // Most reliable on iOS: query PHAssetMediaSubtype.screenshot via mediaSubtypes.
+    if (Platform.OS === "ios") {
+      const ids = new Set<string>()
+
+      let after: string | undefined
+      let hasNextPage = true
+
+      while (hasNextPage) {
+        const page = await MediaLibrary.getAssetsAsync({
+          mediaType: "photo",
+          mediaSubtypes: ["screenshot"],
+          first: 200,
+          after,
+          sortBy: [MediaLibrary.SortBy.creationTime],
+        })
+
+        for (const a of page.assets) ids.add(a.id)
+
+        hasNextPage = page.hasNextPage
+        after = page.endCursor ?? undefined
+
+        if (ids.size >= 2000) break
+      }
+
+      if (ids.size > 0) return ids
+    }
+
+    // Fallback: try to find a smart album that represents screenshots.
+    const albums = await MediaLibrary.getAlbumsAsync({ includeSmartAlbums: true })
+    const screenshotsAlbum = albums.find((a) => a.title.toLowerCase().includes("screenshot"))
 
     if (!screenshotsAlbum) return new Set<string>()
 
@@ -133,7 +164,7 @@ async function findScreenshotAssetIds(): Promise<Set<string>> {
       hasNextPage = page.hasNextPage
       after = page.endCursor ?? undefined
 
-      if (ids.size >= 10000) break
+      if (ids.size >= 2000) break
     }
 
     return ids
