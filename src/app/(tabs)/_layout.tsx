@@ -14,6 +14,14 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="moments" options={{ title: "Moments" }} />
       <Tabs.Screen name="moments/[clusterId]" options={{ href: null, title: "Moment" }} />
+      <Tabs.Screen
+        name="photo/[assetId]"
+        options={{
+          href: null,
+          title: "Photo",
+          tabBarStyle: { display: "none" },
+        }}
+      />
       <Tabs.Screen name="utilities" options={{ title: "Utilities" }} />
       <Tabs.Screen name="people" options={{ title: "People" }} />
       <Tabs.Screen name="places" options={{ title: "Places" }} />

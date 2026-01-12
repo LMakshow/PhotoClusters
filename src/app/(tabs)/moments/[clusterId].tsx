@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { FlatList, Image, ImageStyle, View, ViewStyle } from "react-native"
+import { FlatList, Image, ImageStyle, Pressable, ViewStyle } from "react-native"
 import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 import { format, isSameDay } from "date-fns"
 
@@ -79,9 +79,14 @@ export default function MomentDetailRoute() {
           contentContainerStyle={$grid}
           columnWrapperStyle={$row}
           renderItem={({ item }) => (
-            <View style={$cell}>
+            <Pressable
+              style={$cell}
+              onPress={() => {
+                router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
+              }}
+            >
               <Image source={{ uri: item.uri }} style={$img} />
-            </View>
+            </Pressable>
           )}
         />
       </Screen>

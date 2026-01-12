@@ -248,6 +248,7 @@ export function Screen(props: ScreenProps) {
     keyboardOffset = 0,
     safeAreaEdges,
     SystemBarsProps,
+    systemBarStyle,
   } = props
 
   const $containerInsets = useSafeAreaInsetsStyle(safeAreaEdges)
@@ -260,7 +261,7 @@ export function Screen(props: ScreenProps) {
         $containerInsets,
       ]}
     >
-      <SystemBars style={"dark"} {...SystemBarsProps} />
+      <SystemBars style={systemBarStyle || "dark"} {...SystemBarsProps} />
 
       <KeyboardAvoidingView
         behavior={isIos ? "padding" : "height"}

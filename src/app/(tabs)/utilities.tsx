@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { FlatList, Image, ImageStyle, View, ViewStyle } from "react-native"
+import { FlatList, Image, ImageStyle, Pressable, ViewStyle } from "react-native"
+import { useRouter } from "expo-router"
 
 import { Screen } from "@/components/Screen"
 import { Text } from "@/components/Text"
@@ -9,6 +10,7 @@ import { useAppTheme } from "@/theme/context"
 
 export default function UtilitiesRoute() {
   const { themed, theme } = useAppTheme()
+  const router = useRouter()
 
   const [assets, setAssets] = useState<AssetIndexItem[]>(() => {
     const { assetIndex } = loadCachedMomentsState()
@@ -54,9 +56,14 @@ export default function UtilitiesRoute() {
         contentContainerStyle={themed($grid)}
         columnWrapperStyle={themed($row)}
         renderItem={({ item }) => (
-          <View style={themed($cell)}>
+          <Pressable
+            style={themed($cell)}
+            onPress={() => {
+              router.push(`/(tabs)/photo/${encodeURIComponent(item.id)}`)
+            }}
+          >
             <Image source={{ uri: item.uri }} style={themed($img)} />
-          </View>
+          </Pressable>
         )}
       />
 
