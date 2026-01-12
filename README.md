@@ -30,9 +30,9 @@ Primary hypothesis: quality of clustering is the key value; the grouping should 
 
 ### iOS device
 
-This repo uses a dev-client workflow (`yarn start` runs `expo start --dev-client`).
+There's no way to install the prereleased version on an iOS device without Apple Developer account.
 
-Typical flow:
+#### Typical flow for development:
 
 1. Build and install dev-client:
    - `yarn ios --device` (USB-connected iPhone)
@@ -43,6 +43,24 @@ If the app installs but won’t launch due to trust/signing:
 
 - Enable iOS **Developer Mode** (Settings → Privacy & Security)
 - Trust the developer certificate (Settings → General → VPN & Device Management)
+
+### Android device
+
+#### Just to run the prereleased version on an Android device:
+
+1. Download the latest release APK from [Releases](https://github.com/maksymlytvyn/PhotoClusters/releases)
+2. Install it on your device
+
+#### Typical flow for development:
+
+1. Build and install the dev-client on a connected Android device:
+   - `yarn android`
+2. Start Metro:
+   - `yarn start`
+
+Notes:
+
+- Make sure USB debugging is enabled on the device.
 
 ---
 
