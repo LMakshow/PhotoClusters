@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router"
 
+import { Icon } from "@/components/Icon"
 import { useAppTheme } from "@/theme/context"
 
 export default function TabsLayout() {
@@ -12,7 +13,13 @@ export default function TabsLayout() {
         tabBarActiveTintColor: theme.colors.text,
       }}
     >
-      <Tabs.Screen name="moments" options={{ title: "Moments" }} />
+      <Tabs.Screen
+        name="moments"
+        options={{
+          title: "Moments",
+          tabBarIcon: ({ color, size }) => <Icon icon="moments" color={color} size={size} />,
+        }}
+      />
       <Tabs.Screen name="moments/[clusterId]" options={{ href: null, title: "Moment" }} />
       <Tabs.Screen
         name="photo/[assetId]"
@@ -22,9 +29,27 @@ export default function TabsLayout() {
           tabBarStyle: { display: "none" },
         }}
       />
-      <Tabs.Screen name="utilities" options={{ title: "Utilities" }} />
-      <Tabs.Screen name="people" options={{ title: "People" }} />
-      <Tabs.Screen name="places" options={{ title: "Places" }} />
+      <Tabs.Screen
+        name="utilities"
+        options={{
+          title: "Utilities",
+          tabBarIcon: ({ color, size }) => <Icon icon="utilities" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="people"
+        options={{
+          title: "People",
+          tabBarIcon: ({ color, size }) => <Icon icon="people" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="places"
+        options={{
+          title: "Places",
+          tabBarIcon: ({ color, size }) => <Icon icon="places" color={color} size={size} />,
+        }}
+      />
     </Tabs>
   )
 }

@@ -123,6 +123,11 @@ export const iconRegistry = {
   settings: require("@assets/icons/settings.png"),
   view: require("@assets/icons/view.png"),
   x: require("@assets/icons/x.png"),
+
+  moments: require("@assets/icons/moments.png"),
+  utilities: require("@assets/icons/screenshot.png"),
+  people: require("@assets/icons/people.png"),
+  places: require("@assets/icons/pointer.png"),
 }
 
 const $imageStyleBase: ImageStyle = {
